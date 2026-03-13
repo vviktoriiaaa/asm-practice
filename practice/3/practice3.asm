@@ -1,36 +1,45 @@
-; practice3.asm
-; I/O: int 80h
-; blocks: I/O, parse, math/logic, loops, memory
+; [memory]
+section .bss
+    buffer resb 12              ; Резервуємо місце для 10 цифр, '\n' та залишку
 
-BITS 32
-GLOBAL _start
+section .text
+    global _start
 
-SECTION .data
-prompt db "practice3: see README.md", 10
-prompt_len equ $-prompt
-
-SECTION .bss
-buf resb 256
-
-SECTION .text
 _start:
-    ; I/O: write prompt
-    mov eax, 4          ; sys_write
-    mov ebx, 1          ; stdout
-    mov ecx, prompt
-    mov edx, prompt_len
-    int 0x80
+    ; [logic]
+    ; Вхідне число в діапазоні 0...999999 завантажуємо в EAX
+    mov eax, 999999             
 
-    ; I/O: read line (optional in skeleton)
-    mov eax, 3          ; sys_read
-    mov ebx, 0          ; stdin
-    mov ecx, buf
-    mov edx, 255
-    int 0x80
+    lea edi, [buffer + 11]      ; Ставимо вказівник на кінець буфера
+    mov byte [edi], 0xA         ; [I/O] Записуємо символ нового рядка (ASCII 10)
+    mov ebx, 10                 ; База системи числення
+    mov ecx, 1                  ; Початкова довжина рядка (тільки \n)
 
-    ; logic: TODO implement task logic according to README.md
+convert_loop:
+    ; [math]
+    xor edx, edx                ; Обнуляємо EDX перед діленням
+    div ebx                     ; EAX / 10 -> Частка в EAX, остача в EDX
+    
+    ; [parse]
+    add dl, '0'                 ; Перетворюємо цифру в символ '0'-'9'
+    dec edi                     ; Зсуваємо вказівник вліво
+    mov [edi], dl               ; Записуємо символ у буфер
+    inc ecx                     ; Збільшуємо лічильник символів
+    
+    ; [loops]
+    test eax, eax               ; Перевіряємо, чи є ще цифри
+    jnz convert_loop            ; Якщо EAX не 0, продовжуємо поділ
 
-    ; exit
-    mov eax, 1          ; sys_exit
-    xor ebx, ebx
+    ; [I/O]
+    ; Виклик sys_write (eax=4) для друку результату
+    mov edx, ecx                ; EDX = кількість байт для запису
+    mov ecx, edi                ; ECX = адреса початку рядка в буфері
+    mov ebx, 1                  ; EBX = 1 (stdout)
+    mov eax, 4                  ; EAX = 4 (sys_write)
+    int 0x80                    ; Виклик ядра
+
+exit:
+    ; [logic]
+    mov eax, 1                  ; sys_exit
+    xor ebx, ebx                ; код повернення 0
     int 0x80
